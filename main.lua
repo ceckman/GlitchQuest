@@ -13,10 +13,12 @@ Timer = require "lua/timer"
 --on a reset after death, MAFRE hangs in the air for a couple of seconds. The problem is linked to the timer that resets the player after death, as a regular reset with "r" works fine. We need to go back and look at the glitchy timer and see what is wrong with it.
 --MAFRE occasionally disappears when two or more keys are hit. This is a problem with his various states conflicting (ie running, jumping, etc). We need to go back and check the state checkers and see what is wrong there.
 --Occassionally, touching the sides of the crushing blocks will kill the player. This has something to do with how we check for collision on the blocks (ie the blocks hitbox is too large). We just need to make the hitbox on the blocks smaller on the sides.
+--Also, the music in the end is glitchy, but that adds nicely to the style of the game
 
 --Create our gamestates (ie levels, menu)
 local menu = {}
 local game = {}
+local controls = {}
 local credits = {}
 local endgame = {}
 
@@ -60,8 +62,16 @@ function menu:init()
       name = 'Start Game',
       action = function()
 		TEsound.play("sound/select.mp3")
+		TEsound.playLooping("level1/level1.mp3", "level")
 		TEsound.stop("main")
         Gamestate.switch(game)
+      end
+   }
+   testmenu:addItem{
+      name = 'How to Play',
+      action = function()
+         TEsound.play("sound/select.mp3")
+		 Gamestate.switch(controls)
       end
    }
    testmenu:addItem{
@@ -108,11 +118,10 @@ end
 
 --Credits screen
 function credits:init()
-	mbk = love.graphics.newImage("menu/m_bk.jpg")
+	mbk = love.graphics.newImage("menu/m_bk.jpg")	
 end
 
 function credits:update(dt)
-   testmenu:update(dt)
    TEsound.cleanup()
 end
 
@@ -127,6 +136,27 @@ function credits:draw()
    love.graphics.print("http://spriters-resource.com/ for all sprites (MAFRE, lever, spikes)", 250, 400)
    love.graphics.print("Ensayia, Matthias Richter, Bartbes, and nkorth for their code libraries", 250, 500)
    love.graphics.print("Github and Google Drive", 250, 600)
+end
+
+function credits:keypressed(key)
+    if key == "escape" then
+	  TEsound.play("sound/select.mp3")
+	  Gamestate.switch(menu)
+   end
+end
+
+--How to Play screen
+function credits:init()
+	control = love.graphics.newImage("menu/controls.jpg")	
+end
+
+function credits:update(dt)
+   TEsound.cleanup()
+end
+
+function credits:draw()
+   love.graphics.setColor(255, 255, 255)
+   love.graphics.draw(control, 0, 0)
 end
 
 function credits:keypressed(key)
@@ -195,8 +225,6 @@ function game:init()
    
    anim_dead = newAnimation(death, 110, 88, .1, 0)
    anim_dead:setMode("loop")
-
-    TEsound.playLooping("level1/level1.mp3", "level")
     
 	--text is used in our debugger
 	text = " "
@@ -405,24 +433,32 @@ function game:update(dt)
 		leveronn=true
 	end
 	
-	--All these are for the moving columns
+	if objects.player.body:getX()>515 and objects.player.body:getX()<600 and objects.player.body:getY()<1592 and objects.player.body:getY()>1550 then
+		leveronn=true
+	end --lever area
+	
 	if objects.player.body:getX()<objects.block21.body:getX()+76 and objects.player.body:getX()>objects.block21.body:getX()-76 then
 		if objects.player.body:getY()<=objects.block21.body:getY()+125 and objects.player.body:getY()>=objects.block21.body:getY()-25 then
 			dead=true
 		end
-	end
+	end --moving column right
 	
 	if objects.player.body:getX()<objects.block20.body:getX()+76 and objects.player.body:getX()>objects.block20.body:getX()-76 then
 		if objects.player.body:getY()<=objects.block20.body:getY()+125 and objects.player.body:getY()>=objects.block20.body:getY()-25 then
 			dead=true
 		end
-	end
+	end --moving column center
 	
 	if objects.player.body:getX()<objects.block19.body:getX()+76 and objects.player.body:getX()>objects.block19.body:getX()-76 then
 		if objects.player.body:getY()<=objects.block19.body:getY()+125 and objects.player.body:getY()>=objects.block19.body:getY()-25 then
 			dead=true
 		end
-	end
+	end --moving column left
+	
+	
+	if objects.block26.body:getAngularVelocity() ~= .75 and objects.player.body:getX()>160 and objects.player.body:getX()<420 and objects.player.body:getY()>1350 and objects.player.body:getY()<1650 then
+			dead=true
+	end --rotating kill
 	
 	objects.block26.body:setPosition(260, 1475)
 	objects.block26.body:setAngularVelocity(.75)
@@ -497,6 +533,7 @@ function game:update(dt)
 					up = false
 					down = true
 					objects.player.body:applyLinearImpulse(0, 10)
+					
 				end
 			end
 		end
@@ -512,6 +549,7 @@ function game:update(dt)
 						up = true
 						down = false
 						air=true
+						TEsound.play("sound/jump.mp3")
 					end
 				end
 			end
@@ -739,9 +777,6 @@ function game:draw()
 	love.graphics.draw(spikesright, -400, 1850)
 	love.graphics.draw(spikesright, -400, 1900)
 	
-	love.graphics.draw(spikesdown, 25, 1650)
-	love.graphics.draw(spikesdown, 75, 1650)
-	
 	--drwas all of our blocks
 	love.graphics.polygon("fill", objects.block1.body:getWorldPoints(objects.block1.shape:getPoints()))
 	love.graphics.polygon("fill", objects.block2.body:getWorldPoints(objects.block2.shape:getPoints()))
@@ -774,9 +809,13 @@ function game:draw()
 	love.graphics.polygon("fill", objects.block26.body:getWorldPoints(objects.block26.shape:getPoints()))
 	love.graphics.setColor(50, 50, 50)
 	love.graphics.polygon("fill", objects.block27.body:getWorldPoints(objects.block27.shape:getPoints()))
+	love.graphics.setColor(0, 0, 200) -- red,green,blue
 	if leveronn==false then love.graphics.polygon("fill", objects.block28.body:getWorldPoints(objects.block28.shape:getPoints())) end
+	love.graphics.setColor(50, 50, 50)
+	
 	love.graphics.printf(text, objects.player.body:getX(), objects.player.body:getY()-100, 800)
 
+	
 	cam:detach()
 end
 
@@ -797,14 +836,19 @@ function game:keypressed(key, u)
    --Complete level
    if key == "s" then
 	  dead = false
-	  leveronn = true
+	  leveronn = false
 	  objects.player.body:setPosition(-150, 900)
 	  objects.player.body:setLinearVelocity(1,1)
    end
    --Plays the jump sound effect
-   if key == "up" then
-	  if air == false and dead == false then TEsound.play("sound/jump.mp3") end
-   end
+   if key== "m" then
+    TEsound.play("sound/select.mp3")
+	
+	TEsound.playLooping("menu/maintheme.mp3", "main")
+	TEsound.stop("level")
+	Gamestate.switch(menu)
+	end
+
 end
 
 --Sends the player back to the beginning
