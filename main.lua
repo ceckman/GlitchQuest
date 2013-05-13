@@ -146,20 +146,20 @@ function credits:keypressed(key)
 end
 
 --How to Play screen
-function credits:init()
+function controls:init()
 	control = love.graphics.newImage("menu/controls.jpg")	
 end
 
-function credits:update(dt)
+function controls:update(dt)
    TEsound.cleanup()
 end
 
-function credits:draw()
+function controls:draw()
    love.graphics.setColor(255, 255, 255)
    love.graphics.draw(control, 0, 0)
 end
 
-function credits:keypressed(key)
+function controls:keypressed(key)
     if key == "escape" then
 	  TEsound.play("sound/select.mp3")
 	  Gamestate.switch(menu)
